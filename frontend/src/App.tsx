@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import logo from './logo.svg';
-import { Button, Col, Container, Row } from 'react-bootstrap';
+import { Button, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { Note as model } from './models/note';
 import Note from './components/Note';
 import styles from './styles/NotesPage.module.css';
@@ -14,15 +14,22 @@ function App() {
 
 	const [showAddNoteDialog, setShowAddNoteDialog] = useState(false);
 	const [noteToEdit, setNoteToEdit] = useState<model|null>(null);
+	const [notesLoading, setNotesLoading] = useState(true);
+	const [showNotesLoadingError, setShowNotesLoadingError] = useState(false);
 
 	useEffect(() => {
 		async function loadNotes() {
 			try {
+				setShowNotesLoadingError(false);
+				setNotesLoading(true);
 				const notes = await notesAPI.fetchNotes();
 				setNotes(notes);
 			} catch (error) {
+				setShowNotesLoadingError(true);
+
 				console.error(error);
-				alert(error);
+			} finally {
+				setNotesLoading(false);
 			}
 		}
 
@@ -39,25 +46,32 @@ function App() {
 		}
 	}
 
+	const notesGrid = 
+		<Row xs={1} md={2} xl={3} className={`g-4 ${styles.noteGrid}`}>
+			{notes.map(note => (
+				<Col key={note._id}>
+					<Note 
+						note={note} 
+						onNoteClicked={setNoteToEdit}
+						onDeleteNoteClicked={deleteNote} 
+						className={styles.note} />
+				</Col>
+			))}
+		</Row>
+
 	return (
-		<Container>
+		<Container className={styles.notesPage}>
 			<Button 
 				className={`mb-4 ${stylesUtils.blockCenter} ${stylesUtils.flexCenter}`}
 				onClick={() => setShowAddNoteDialog(true)}>
 					<FaPlus />
 					Add new note</Button>	
 
-			<Row xs={1} md={2} xl={3} className='g-4'>
-				{notes.map(note => (
-					<Col key={note._id}>
-						<Note 
-							note={note} 
-							onNoteClicked={setNoteToEdit}
-							onDeleteNoteClicked={deleteNote} 
-							className={styles.note} />
-					</Col>
-				))}
-			</Row>
+			{ notesLoading && <Spinner animation="border" variant="primary" /> }
+			{ showNotesLoadingError && <p>Something went wrong. Please refresh the page.</p> }
+			{ !notesLoading && !showNotesLoadingError && <>
+				{ notes.length > 0 ? notesGrid : <p>You don't have any notes yet.</p> }
+			</> }
 
 			{ showAddNoteDialog && 
 				<AddEditNoteDialog 
